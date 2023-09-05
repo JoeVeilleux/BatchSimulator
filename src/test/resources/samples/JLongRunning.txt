@@ -1,6 +1,6 @@
 $JOB Joe's test job
-$JAVA Foo
-public class Foo {
+$JAVA LongRunning
+public class LongRunning {
     public static void main(String[] args) throws Exception {
         int iNumberOfLoops = 10;
         int iSecondsToSleep = 5;
