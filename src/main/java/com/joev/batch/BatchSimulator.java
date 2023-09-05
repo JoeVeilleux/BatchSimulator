@@ -44,7 +44,7 @@ public class BatchSimulator {
 	enum RunMode { SingleThreadAllFiles, SingleThreadWaitForStop }
 	
 	private enum PARSETOKEN {
-		JOB("^\\$JOB (.*)"), JAVA("^\\$JAVA (\\w+)"), JAVACODEORRUN("^\\$RUN"), INPUTDATAOREND("^\\$END"), ERROREXIT("");
+		JOB("^\\$JOB (.*)"), COMPILE("^\\$(JAVA|C) (\\w+)"), CODEORRUN("^\\$RUN"), INPUTDATAOREND("^\\$END"), ERROREXIT("");
 		private Pattern pat = null;
 		PARSETOKEN(String sPat) { 
 			this.pat = Pattern.compile(sPat);
@@ -77,9 +77,10 @@ public class BatchSimulator {
 		PARSETOKEN ptExpect = PARSETOKEN.JOB;
 		StringBuffer sbJob = new StringBuffer();
 		String sJobComments = null;
-		StringBuffer sbJavaCode = new StringBuffer();
+		StringBuffer sbPgmCode = new StringBuffer();
 		StringBuffer sbInputData = new StringBuffer();
-		String sJavaMainClass = null;
+		String sCompilerLang = null;
+		String sPgmName = null;
 
 		String sLine = null;
 		int iLine = 0;
@@ -97,45 +98,47 @@ public class BatchSimulator {
 				if (m.matches()) {
 					sJobComments = m.group(1);
 					if (bVerbose) log.log("PARSER: Recognized '$JOB'. Comments='"+sJobComments+"'");
-					ptExpect = PARSETOKEN.JAVA;
+					ptExpect = PARSETOKEN.COMPILE;
 				} else {
 					log.log("ERROR: Input line #"+iLine+" '"+sLine+"' does not match expected pattern '"+ptExpect.pat.pattern()+"'");
 					ptExpect = PARSETOKEN.ERROREXIT;
 				}
 				break;
-			case JAVA:
+			case COMPILE:
 				if (m.matches()) {
-					sJavaMainClass = m.group(1);
-					if (bVerbose) log.log("PARSER: Recognized '$JAVA'. MainClass='"+sJavaMainClass+"'");
-					ptExpect = PARSETOKEN.JAVACODEORRUN;
+					sCompilerLang = m.group(1);
+					sPgmName = m.group(2);
+					if (bVerbose) log.log("PARSER: Recognized '$"+sCompilerLang+"'. PgmName='"+sPgmName+"'");
+					ptExpect = PARSETOKEN.CODEORRUN;
 				} else {
 					log.log("ERROR: Input line #"+iLine+" '"+sLine+"' does not match expected pattern '"+ptExpect.pat.pattern()+"'");
 					ptExpect = PARSETOKEN.ERROREXIT;
 				}
 				break;
-			case JAVACODEORRUN:
+			case CODEORRUN:
 				if (m.matches()) {
 					if (bVerbose) log.log("PARSER: Recognized '$RUN'.");
 					ptExpect = PARSETOKEN.INPUTDATAOREND;
 				} else {
-					// It must be a (another?) line of Java code...
-					if (sbJavaCode.length() > 0)
-						sbJavaCode.append(sNL);
-					sbJavaCode.append(sLine);
+					// It must be a (another?) line of program code...
+					if (sbPgmCode.length() > 0)
+						sbPgmCode.append(sNL);
+					sbPgmCode.append(sLine);
 				}
 				break;
 			case INPUTDATAOREND:
 				if (m.matches()) {
 					if (bVerbose) log.log("PARSER: Recognized '$END'.");
 					// Queue up the now-completed job...
-					BatchJob bj = new BatchJob(fInput.getName(), iJobNumber, sbJob.toString(), sJobComments, sJavaMainClass, sbJavaCode.toString(), sbInputData.toString());
+					BatchJob bj = new BatchJob(fInput.getName(), iJobNumber, sbJob.toString(), sJobComments, sCompilerLang, sPgmName, sbPgmCode.toString(), sbInputData.toString());
 					albj.add(bj);
 					// Reset for the next job...
 					iJobNumber++;
 					sbJob = new StringBuffer();
 					sJobComments = null;
-					sJavaMainClass = null;
-					sbJavaCode = new StringBuffer();
+					sCompilerLang = null;
+					sPgmName = null;
+					sbPgmCode = new StringBuffer();
 					sbInputData = new StringBuffer();
 					// We expect to see another '$JOB' token next (or the end of the input stream)...
 					ptExpect = PARSETOKEN.JOB;
@@ -172,20 +175,22 @@ public class BatchSimulator {
 		private int iJobNumber;
 		private String sJob;
 		private String sJobComments;
-		private String sJavaMainClass;
-		private String sJavaCode;
+		private String sCompilerLang;
+		private String sPgmName;
+		private String sPgmCode;
 		private String sInputData;
 		private Date dtRun = null;
 		private CommandRunnerResult crrCompile = null;
 		private CommandRunnerResult crrRun = null;
 		
-		BatchJob(String sFilename, int iJobNumber, String sJob, String sJobComments, String sJavaMainClass, String sJavaCode, String sInputData) {
+		BatchJob(String sFilename, int iJobNumber, String sJob, String sJobComments, String sCompilerLang, String sPgmName, String sJavaCode, String sInputData) {
 			this.sFilename = sFilename;
 			this.iJobNumber = iJobNumber;
 			this.sJob = sJob;
 			this.sJobComments = sJobComments;
-			this.sJavaMainClass = sJavaMainClass;
-			this.sJavaCode = sJavaCode;
+			this.sCompilerLang = sCompilerLang;
+			this.sPgmName = sPgmName;
+			this.sPgmCode = sJavaCode;
 			this.sInputData = sInputData;
 			this.log = new SimpleLogger(this.getClass().getSimpleName()+":"+sFilename+":"+String.format("%04d", iJobNumber)+":"+Thread.currentThread().getName());
 		}
@@ -229,12 +234,12 @@ public class BatchSimulator {
 			int iRC = 0;
 			CommandRunner cmdRunner = new CommandRunner();
 			
-			log.log("Java program code");
-			log.log(this.sJavaCode, LogFormat.WithLineNumbers);
+			log.log(this.sCompilerLang+" program code");
+			log.log(this.sPgmCode, LogFormat.WithLineNumbers);
 			log.log("Input data");
 			log.log(this.sInputData, LogFormat.WithLineNumbers);
 			
-			// Create a temporary directory, and put the Java and input-data files into it...
+			// Create a temporary directory, and put the program and input-data files into it...
 			log.log("Spooling program and data to disk...");
 			String sSysTmpDir = System.getProperty("java.io.tmpdir");
 			String sTmpDirName = "BatchSimulator"+System.currentTimeMillis()+".tmp";
@@ -247,12 +252,12 @@ public class BatchSimulator {
 			try {
 				if (iRC == 0) {
 					log.log("Temp directory '"+fTmpDir.getAbsolutePath()+"' created.");
-					File fProgram = new File(fTmpDir, sJavaMainClass+".java");
+					File fProgram = new File(fTmpDir, sPgmName+"."+sCompilerLang.toLowerCase());
 					FileWriter fwProgram;
 					fwProgram = new FileWriter(fProgram);
-					fwProgram.write(sJavaCode);
+					fwProgram.write(sPgmCode);
 					fwProgram.close();
-					log.log("Wrote Java program to: '"+fProgram.getAbsolutePath()+"'.");
+					log.log("Wrote "+sCompilerLang+" program to: '"+fProgram.getAbsolutePath()+"'.");
 					File fInputData = new File(fTmpDir, "INPUTDATA.txt");
 					FileWriter fwInputData = new FileWriter(fInputData);
 					fwInputData.write(sInputData);
@@ -260,8 +265,14 @@ public class BatchSimulator {
 					log.log("Wrote input data to: '"+fInputData.getAbsolutePath()+"'.");
 					
 					// Compile the program...
-					log.log("Compiling program...");
-					this.crrCompile = cmdRunner.runCommand("javac "+sJavaMainClass+".java", fTmpDir);
+					log.log("Compiling "+sCompilerLang+" program...");
+					if (sCompilerLang.equals("JAVA")) {
+						this.crrCompile = cmdRunner.runCommand("javac "+sPgmName+".java", fTmpDir);
+					} else if (sCompilerLang.equals("C")) {
+						this.crrCompile = cmdRunner.runCommand("gcc -o "+sPgmName+" "+sPgmName+".c", fTmpDir);
+					} else {
+						throw new IllegalArgumentException("Unrecognized compiler-language: "+sCompilerLang);
+					}
 					log.log("Compilation command result:");
 					log.log(this.crrCompile.toString());
 					if (crrCompile.iRC == 0) {
@@ -274,7 +285,11 @@ public class BatchSimulator {
 					// Execute the program (but only if it compiled cleanly)...
 					if (iRC == 0) {
 						log.log("Executing program...");
-						this.crrRun = cmdRunner.runCommand("java "+sJavaMainClass+" < "+fInputData.getName(), fTmpDir);
+						if (sCompilerLang.equals("JAVA")) {
+							this.crrRun = cmdRunner.runCommand("java "+sPgmName+" < "+fInputData.getName(), fTmpDir);
+						} else if (sCompilerLang.equals("C")) {
+							this.crrRun = cmdRunner.runCommand("./"+sPgmName+" < "+fInputData.getName(), fTmpDir);
+						}
 						log.log("Program execution result:");
 						log.log(this.crrRun.toString());
 						iRC = this.crrRun.iRC;
@@ -287,7 +302,7 @@ public class BatchSimulator {
 					
 					// Clean up...
 					log.log("Cleaning up...");
-					new File(fTmpDir, sJavaMainClass+".class").delete();
+					new File(fTmpDir, sPgmName+".class").delete();
 					fProgram.delete();
 					fInputData.delete();
 					fTmpDir.delete();

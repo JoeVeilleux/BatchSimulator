@@ -1,0 +1,8 @@
+$JOB Joe's test job
+$C Hello
+#include <stdio.h>
+int main() {
+    printf("Hello, world!\n");
+}
+$RUN
+$END
