@@ -44,7 +44,7 @@ public class BatchSimulator {
 	enum RunMode { SingleThreadAllFiles, SingleThreadWaitForStop }
 	
 	private enum PARSETOKEN {
-		JOB("^\\$JOB (.*)"), COMPILE("^\\$(JAVA|C) (\\w+)"), CODEORRUN("^\\$RUN"), INPUTDATAOREND("^\\$END"), ERROREXIT("");
+		JOB("^\\$JOB (.*)"), COMPILE("^\\$(PY|JAVA|C) (\\w+)"), CODEORRUN("^\\$RUN"), INPUTDATAOREND("^\\$END"), ERROREXIT("");
 		private Pattern pat = null;
 		PARSETOKEN(String sPat) { 
 			this.pat = Pattern.compile(sPat);
@@ -183,14 +183,14 @@ public class BatchSimulator {
 		private CommandRunnerResult crrCompile = null;
 		private CommandRunnerResult crrRun = null;
 		
-		BatchJob(String sFilename, int iJobNumber, String sJob, String sJobComments, String sCompilerLang, String sPgmName, String sJavaCode, String sInputData) {
+		BatchJob(String sFilename, int iJobNumber, String sJob, String sJobComments, String sCompilerLang, String sPgmName, String sPgmCode, String sInputData) {
 			this.sFilename = sFilename;
 			this.iJobNumber = iJobNumber;
 			this.sJob = sJob;
 			this.sJobComments = sJobComments;
 			this.sCompilerLang = sCompilerLang;
 			this.sPgmName = sPgmName;
-			this.sPgmCode = sJavaCode;
+			this.sPgmCode = sPgmCode;
 			this.sInputData = sInputData;
 			this.log = new SimpleLogger(this.getClass().getSimpleName()+":"+sFilename+":"+String.format("%04d", iJobNumber)+":"+Thread.currentThread().getName());
 		}
@@ -265,35 +265,39 @@ public class BatchSimulator {
 					log.log("Wrote input data to: '"+fInputData.getAbsolutePath()+"'.");
 					
 					// Compile the program...
-					log.log("Compiling "+sCompilerLang+" program...");
-					if (sCompilerLang.equals("JAVA")) {
-						this.crrCompile = cmdRunner.runCommand("javac "+sPgmName+".java", fTmpDir);
-					} else if (sCompilerLang.equals("C")) {
-						this.crrCompile = cmdRunner.runCommand("gcc -o "+sPgmName+" "+sPgmName+".c", fTmpDir);
-					} else {
-						throw new IllegalArgumentException("Unrecognized compiler-language: "+sCompilerLang);
+					if (sCompilerLang.matches("(JAVA|C)")) {
+						log.log("Compiling "+sCompilerLang+" program...");
+						if (sCompilerLang.equals("JAVA")) {
+							this.crrCompile = cmdRunner.runCommand("javac "+sPgmName+".java", fTmpDir);
+						} else if (sCompilerLang.equals("C")) {
+							this.crrCompile = cmdRunner.runCommand("gcc -o "+sPgmName+" "+sPgmName+".c", fTmpDir);
+						}
+						log.log("Compilation command result:");
+						log.log(this.crrCompile.toString());
+						if (crrCompile.iRC == 0) {
+							log.log("Compilation successful!");
+						} else {
+							log.log("Compilation unsuccessful!");
+						}
+						iRC = this.crrCompile.iRC;
 					}
-					log.log("Compilation command result:");
-					log.log(this.crrCompile.toString());
-					if (crrCompile.iRC == 0) {
-						log.log("Compilation successful!");
-					} else {
-						log.log("Compilation unsuccessful!");
-					}
-					iRC = this.crrCompile.iRC;
 					
 					// Execute the program (but only if it compiled cleanly)...
 					if (iRC == 0) {
 						log.log("Executing program...");
-						if (sCompilerLang.equals("JAVA")) {
+						if (sCompilerLang.equals("PY")) {
+							this.crrRun = cmdRunner.runCommand("python3 "+sPgmName+".py < "+fInputData.getName(), fTmpDir);
+						} else if (sCompilerLang.equals("JAVA")) {
 							this.crrRun = cmdRunner.runCommand("java "+sPgmName+" < "+fInputData.getName(), fTmpDir);
 						} else if (sCompilerLang.equals("C")) {
 							this.crrRun = cmdRunner.runCommand("./"+sPgmName+" < "+fInputData.getName(), fTmpDir);
+						} else {
+							throw new IllegalArgumentException("Unrecognized language: "+sCompilerLang);
 						}
 						log.log("Program execution result:");
 						log.log(this.crrRun.toString());
 						iRC = this.crrRun.iRC;
-						if (crrCompile.iRC == 0) {
+						if (crrRun.iRC == 0) {
 							log.log("Program execution successful!");
 						} else {
 							log.log("Program execution unsuccessful!");

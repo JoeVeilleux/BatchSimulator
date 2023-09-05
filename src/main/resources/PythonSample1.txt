@@ -1,0 +1,6 @@
+$JOB Joe's test Python job
+$PY Hello
+for x in range(10):
+    print("Hello, World!")
+$RUN
+$END
