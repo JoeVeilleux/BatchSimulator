@@ -1,0 +1,50 @@
+$JOB Joe's First test job to be run under the BatchSimulator
+$JAVA Foo
+public class Foo {
+    public static void main(String[] args) {
+        System.out.println("Hello, world!");
+    }
+}
+$RUN
+$END
+$JOB Joe's Second test job to be run under the BatchSimulator
+$JAVA Foo
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+public class Foo {
+    public static void main(String[] args) throws Exception {
+        System.out.println("Hello again, world!");
+        System.out.println("Reading from STDIN...");
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        String sLine;
+        while ((sLine = br.readLine()) != null) {
+            System.out.println("Line read from STDIN: "+sLine);
+        }
+        System.out.println("End of STDIN");
+    }
+}
+$RUN
+One line
+Two line
+Red line
+Blue line
+$END
+$JOB Joe's Third test job: Count from 1 to 'n'.
+$JAVA Foo
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+public class Foo {
+    public static void main(String[] args) throws Exception {
+        System.out.println("Hello again, world!");
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        String sLine = br.readLine();
+        int iCountUpTo = Integer.parseInt(sLine);
+        System.out.println("Counting from 1 to "+iCountUpTo+"...");
+        for (int i=1; i <= iCountUpTo; i++) {
+            System.out.println(i);
+        }
+    }
+}
+$RUN
+10
+$END

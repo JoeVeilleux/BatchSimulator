@@ -1,0 +1,17 @@
+$JOB Joe's test job
+$JAVA Foo
+public class Foo {
+    public static void main(String[] args) throws Exception {
+        int iNumberOfLoops = 10;
+        int iSecondsToSleep = 5;
+        System.out.println("Hello, world!");
+        for (int iLoop=1; iLoop <= iNumberOfLoops; iLoop++) {
+            System.out.println("Loop #"+iLoop+"... Taking a break... zzz... zzz... zzz... zzz...");
+            Thread.sleep(1000*iSecondsToSleep);
+            System.out.println("Woke up... feeling refreshed!!!!");
+        }
+        System.out.println("Goodbye, World!");
+    }
+}
+$RUN
+$END
