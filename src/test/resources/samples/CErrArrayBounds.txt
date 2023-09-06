@@ -1,0 +1,13 @@
+$JOB Joe's test job
+$C CErrArrayBounds
+#include <stdio.h>
+int main() {
+    printf("Hello, world!\n");
+    int arr[10];
+    for (int i = 0; i < 20; i++) {
+        arr[i] = i;
+        printf("Just set arr[%d] to %d\n", i, arr[i]);
+    }
+}
+$RUN
+$END
