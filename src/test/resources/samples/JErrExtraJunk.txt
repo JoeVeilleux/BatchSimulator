@@ -1,0 +1,10 @@
+$JOB Joe's test job
+$JAVA Foo
+public class Foo {
+    public static void main(String[] args) {
+        System.out.println("Hello, world!");
+    }
+}
+$RUN
+$END
+Extra stuff at the end of the file

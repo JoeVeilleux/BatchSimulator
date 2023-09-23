@@ -44,7 +44,7 @@ public class BatchSimulator {
 	enum RunMode { SingleThreadAllFiles, SingleThreadWaitForStop }
 	
 	private enum PARSETOKEN {
-		JOB("^\\$JOB (.*)"), COMPILE("^\\$(PY|JAVA|C) (\\w+)"), CODEORRUN("^\\$RUN"), INPUTDATAOREND("^\\$END"), ERROREXIT("");
+		JOB("^\\$JOB (.*)"), COMPILE("^\\$(PY|JAVA|C) (\\w+).*"), CODEORRUN("^\\$RUN.*"), INPUTDATAOREND("^\\$END.*"), ERROREXIT("^\\s+$");
 		private Pattern pat = null;
 		PARSETOKEN(String sPat) { 
 			this.pat = Pattern.compile(sPat);
@@ -60,19 +60,20 @@ public class BatchSimulator {
 	 * @param fInput a File which is expected to contain one or more batch jobs
 	 * @return ArrayList of BatchJob objects representing the individual jobs from the file
 	 */
-	private static ArrayList<BatchJob> parseBatchJobStream(File fInput) throws Exception {
-		ArrayList<BatchJob> albj = new ArrayList<BatchJob>();
+	private static BatchJob parseBatchJob(File fInput) throws Exception {
+
+		iJobNumber++;
 		
-		// Read and parse the input stream, which is expected to consist of:
+		// Read and parse the input stream, which is expected to consist of one batch job:
 		// $JOB <comments>
 		// $PY|JAVA|C <MainClass>
 		//   ...code of a Python, Java, or C program...
 		// $RUN
 		//   ...input data for the program...
 		// $END
-		// ...and possibly additional JOBs...
 		BufferedReader brInputJobs = null;
 		log.log("Reading input from file '"+fInput.getAbsolutePath()+"'...");
+		// FIXME: This method of reading only supports files in the default encoding, which appears to be ASCII (not UTF-8, etc)
 		brInputJobs = new BufferedReader(new FileReader(fInput));
 		PARSETOKEN ptExpect = PARSETOKEN.JOB;
 		StringBuffer sbJob = new StringBuffer();
@@ -83,11 +84,9 @@ public class BatchSimulator {
 		String sCompilerLang = null;
 		String sPgmName = null;
 
-		// FIXME: If the deck ends before containing all the required control cards (including $END), no output is produced.
-		// Should be fixed so that under *ANY* circumstances, it queues a BatchJob (with the ParseError indicator set if there
-		// is an error) so that the error will be logged and seen by the submitter.
 		String sLine = null;
 		int iLine = 0;
+		// Read the whole file until EOF
 		while ((sLine = brInputJobs.readLine()) != null) {
 			iLine++;
 			// Accumulate a buffer containing the full text of this BatchJob...
@@ -135,19 +134,7 @@ public class BatchSimulator {
 			case INPUTDATAOREND:
 				if (m.matches()) {
 					if (bVerbose) log.log("PARSER: Recognized '$END'.");
-					// Queue up the now-completed job...
-					albj.add(new BatchJob(fInput.getName(), sParseError, iJobNumber, sbJob.toString(), sJobComments, sCompilerLang, sPgmName, sbPgmCode.toString(), sbInputData.toString()));
-					// Reset for the next job...
-					iJobNumber++;
-					sbJob = new StringBuffer();
-					sJobComments = null;
-					sParseError = null;
-					sCompilerLang = null;
-					sPgmName = null;
-					sbPgmCode = new StringBuffer();
-					sbInputData = new StringBuffer();
-					// We expect to see another '$JOB' token next (or the end of the input stream)...
-					ptExpect = PARSETOKEN.JOB;
+					ptExpect = PARSETOKEN.ERROREXIT;
 				} else {
 					// It must be a (another?) line of input data...
 					if (sbInputData.length() > 0)
@@ -155,19 +142,21 @@ public class BatchSimulator {
 					sbInputData.append(sLine);
 				}
 				break;
+			case ERROREXIT:
+				if (m.matches()) {
+					// Extraneous blank line at the end of the file. Don't flag this as an error.
+				} else {
+					// If we have not yet caught/reported any parse error, report this one
+					if (sParseError == null) {
+						sParseError = "ERROR: Unexpected text at end of file: '" + sLine + "'";
+						log.log(sParseError);
+					}
+				}
+				break;
 			default:
 				sParseError = "ERROR: Unexpected value '"+ptExpect+"' for parse-status flag!";
 				log.log(sParseError);
-				ptExpect = PARSETOKEN.ERROREXIT;
-				break;
-			}
-			// If we hit an error, then exit...
-			if (ptExpect.equals(PARSETOKEN.ERROREXIT)) {
-				log.log("Exiting parse at line "+iLine+" due to error.");
-				// Queue up as much of the job as we were able to parse, with the error indicator set...
-				// FIXME: Add code to put something more specific in the ParseError field
-				albj.add(new BatchJob(fInput.getName(), sParseError, iJobNumber, sbJob.toString(), sJobComments, sCompilerLang, sPgmName, sbPgmCode.toString(), sbInputData.toString()));
-				break;
+				throw new IllegalArgumentException(sParseError);
 			}
 		}
 		brInputJobs.close();
@@ -175,8 +164,7 @@ public class BatchSimulator {
 		log.log("At end of input loop:");
 		log.log("Number of lines read: "+iLine);
 
-		
-		return albj;
+		return new BatchJob(fInput.getName(), sParseError, iJobNumber, sbJob.toString(), sJobComments, sCompilerLang, sPgmName, sbPgmCode.toString(), sbInputData.toString());
 	}
 	
 	private static class BatchJob implements Runnable {
@@ -439,14 +427,12 @@ public class BatchSimulator {
 			ArrayList<File> alfInput = listSpoolFiles("Input");
 			for (File f : alfInput) {
 				log.log("Processing BatchJob file: "+f.getAbsolutePath());
-				ArrayList<BatchJob> albj = parseBatchJobStream(f);
-				for (BatchJob bj : albj) {
-					bj.run();
-					waitBetweenJobs();
-				}
+				BatchJob bj = parseBatchJob(f);
+				bj.run();
 				log.log("Done with BatchJob file: "+f.getAbsolutePath()+". Deleting it...");
 				log.log("Deleting BatchJob file: "+f.getAbsolutePath()+"...");
 				log.log(f.delete() ? "File deleted successfully." : "Error deleting file. Unable to delete!");
+				waitBetweenJobs();
 			}
 		} else if (runMode.equals(RunMode.SingleThreadWaitForStop)) {
 			// SingleThreadWaitForStop:
@@ -471,14 +457,12 @@ public class BatchSimulator {
 						// Process the first file on the list (note the first one is the oldest)...
 						File f = alfInput.remove(0);
 						log.log("Processing BatchJob file: "+f.getAbsolutePath());
-						ArrayList<BatchJob> albj = parseBatchJobStream(f);
-						for (BatchJob bj : albj) {
-							bj.run();
-							waitBetweenJobs();
-						}
+						BatchJob bj = parseBatchJob(f);
+						bj.run();
 						log.log("Done with BatchJob file: "+f.getAbsolutePath()+". Deleting it...");
 						log.log("Deleting BatchJob file: "+f.getAbsolutePath()+"...");
 						log.log(f.delete() ? "File deleted successfully." : "Error deleting file. Unable to delete!");
+						waitBetweenJobs();
 					} else {
 						log.log("No jobs in queue. Create file '"+sStopCommandFilename+"' to stop. Waiting...");
 						Thread.sleep(1000*iWaitForWork);

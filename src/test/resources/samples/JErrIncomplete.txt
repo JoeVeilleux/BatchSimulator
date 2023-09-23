@@ -1,0 +1,7 @@
+$JOB Joe's test job (incomplete; missing $RUN and $END)
+$JAVA Foo
+public class Foo {
+    public static void main(String[] args) {
+        System.out.println("Hello, world!");
+    }
+}
