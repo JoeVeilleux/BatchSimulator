@@ -1,0 +1,3 @@
+#!/bin/sh
+touch Spool/Input/_BatchSimulator_STOP_
+

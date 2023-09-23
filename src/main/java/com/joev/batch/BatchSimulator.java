@@ -30,7 +30,7 @@ public class BatchSimulator {
 	private static Properties props = null;
 	private static int iJobNumber = 1;
 	
-	private static final boolean bVerbose = false;
+	private static final boolean bVerbose = true; // FIXME: false;
 
 	private static final HashMap<String,File> alfSpoolDir = new HashMap<String,File>();
 	private static final SimpleDateFormat sdfLastMod = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -65,10 +65,10 @@ public class BatchSimulator {
 		
 		// Read and parse the input stream, which is expected to consist of:
 		// $JOB <comments>
-		// $JAVA <MainClass>
-		//   ...code of a Java program...
+		// $PY|JAVA|C <MainClass>
+		//   ...code of a Python, Java, or C program...
 		// $RUN
-		//   ...input data for the Java program...
+		//   ...input data for the program...
 		// $END
 		// ...and possibly additional JOBs...
 		BufferedReader brInputJobs = null;
@@ -77,11 +77,15 @@ public class BatchSimulator {
 		PARSETOKEN ptExpect = PARSETOKEN.JOB;
 		StringBuffer sbJob = new StringBuffer();
 		String sJobComments = null;
+		String sParseError = null;
 		StringBuffer sbPgmCode = new StringBuffer();
 		StringBuffer sbInputData = new StringBuffer();
 		String sCompilerLang = null;
 		String sPgmName = null;
 
+		// FIXME: If the deck ends before containing all the required control cards (including $END), no output is produced.
+		// Should be fixed so that under *ANY* circumstances, it queues a BatchJob (with the ParseError indicator set if there
+		// is an error) so that the error will be logged and seen by the submitter.
 		String sLine = null;
 		int iLine = 0;
 		while ((sLine = brInputJobs.readLine()) != null) {
@@ -100,7 +104,8 @@ public class BatchSimulator {
 					if (bVerbose) log.log("PARSER: Recognized '$JOB'. Comments='"+sJobComments+"'");
 					ptExpect = PARSETOKEN.COMPILE;
 				} else {
-					log.log("ERROR: Input line #"+iLine+" '"+sLine+"' does not match expected pattern '"+ptExpect.pat.pattern()+"'");
+					sParseError = "ERROR: Input line #"+iLine+" '"+sLine+"' does not match expected pattern '"+ptExpect.pat.pattern()+"'";
+					log.log(sParseError);
 					ptExpect = PARSETOKEN.ERROREXIT;
 				}
 				break;
@@ -111,7 +116,8 @@ public class BatchSimulator {
 					if (bVerbose) log.log("PARSER: Recognized '$"+sCompilerLang+"'. PgmName='"+sPgmName+"'");
 					ptExpect = PARSETOKEN.CODEORRUN;
 				} else {
-					log.log("ERROR: Input line #"+iLine+" '"+sLine+"' does not match expected pattern '"+ptExpect.pat.pattern()+"'");
+					sParseError = "ERROR: Input line #"+iLine+" '"+sLine+"' does not match expected pattern '"+ptExpect.pat.pattern()+"'";
+					log.log(sParseError);
 					ptExpect = PARSETOKEN.ERROREXIT;
 				}
 				break;
@@ -130,12 +136,12 @@ public class BatchSimulator {
 				if (m.matches()) {
 					if (bVerbose) log.log("PARSER: Recognized '$END'.");
 					// Queue up the now-completed job...
-					BatchJob bj = new BatchJob(fInput.getName(), iJobNumber, sbJob.toString(), sJobComments, sCompilerLang, sPgmName, sbPgmCode.toString(), sbInputData.toString());
-					albj.add(bj);
+					albj.add(new BatchJob(fInput.getName(), sParseError, iJobNumber, sbJob.toString(), sJobComments, sCompilerLang, sPgmName, sbPgmCode.toString(), sbInputData.toString()));
 					// Reset for the next job...
 					iJobNumber++;
 					sbJob = new StringBuffer();
 					sJobComments = null;
+					sParseError = null;
 					sCompilerLang = null;
 					sPgmName = null;
 					sbPgmCode = new StringBuffer();
@@ -150,13 +156,17 @@ public class BatchSimulator {
 				}
 				break;
 			default:
-				log.log("ERROR: Unexpected value '"+ptExpect+"' for parse-status flag!");
+				sParseError = "ERROR: Unexpected value '"+ptExpect+"' for parse-status flag!";
+				log.log(sParseError);
 				ptExpect = PARSETOKEN.ERROREXIT;
 				break;
 			}
 			// If we hit an error, then exit...
 			if (ptExpect.equals(PARSETOKEN.ERROREXIT)) {
 				log.log("Exiting parse at line "+iLine+" due to error.");
+				// Queue up as much of the job as we were able to parse, with the error indicator set...
+				// FIXME: Add code to put something more specific in the ParseError field
+				albj.add(new BatchJob(fInput.getName(), sParseError, iJobNumber, sbJob.toString(), sJobComments, sCompilerLang, sPgmName, sbPgmCode.toString(), sbInputData.toString()));
 				break;
 			}
 		}
@@ -172,6 +182,7 @@ public class BatchSimulator {
 	private static class BatchJob implements Runnable {
 		private SimpleLogger log = null;
 		private String sFilename;
+		private String sParseError;
 		private int iJobNumber;
 		private String sJob;
 		private String sJobComments;
@@ -183,8 +194,9 @@ public class BatchSimulator {
 		private CommandRunnerResult crrCompile = null;
 		private CommandRunnerResult crrRun = null;
 		
-		BatchJob(String sFilename, int iJobNumber, String sJob, String sJobComments, String sCompilerLang, String sPgmName, String sPgmCode, String sInputData) {
+		BatchJob(String sFilename, String sParseError, int iJobNumber, String sJob, String sJobComments, String sCompilerLang, String sPgmName, String sPgmCode, String sInputData) {
 			this.sFilename = sFilename;
+			this.sParseError = sParseError;
 			this.iJobNumber = iJobNumber;
 			this.sJob = sJob;
 			this.sJobComments = sJobComments;
@@ -230,6 +242,16 @@ public class BatchSimulator {
 			// Log the raw job input...
 			log.log("Job input:");
 			log.log(sNL+this.sJob+sNL+" "+sNL, LogFormat.Raw);
+			
+			// If there was an error parsing this job, just create the log file containing as much as we know about
+			// the error
+			if (this.sParseError != null) {
+				log.log("Run aborted due to job parsing error: " + this.sParseError);
+				log.log("run() done.");
+				// Set the log back to just writing to STDOUT...
+				log.setLogFile(null);
+				return;
+			}
 			
 			int iRC = 0;
 			CommandRunner cmdRunner = new CommandRunner();
