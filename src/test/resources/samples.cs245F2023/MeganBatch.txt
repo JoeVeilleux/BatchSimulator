@@ -1,0 +1,9 @@
+$JOB Megan’s First test job
+$C MacBatch
+#include <stdio.h>
+int main() {
+	printf("Hello world!/n");
+	printf("This better use the anti-fancy quotes this time. Pls./n");
+}
+$RUN
+$END

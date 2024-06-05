@@ -1,0 +1,7 @@
+$JOB Jena's First C program to be run under the BatchSimulator
+$C Hello
+int main() {
+    printf("So sleepy zzZ \n");
+}
+$RUN
+$END

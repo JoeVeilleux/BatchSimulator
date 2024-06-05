@@ -1,0 +1,8 @@
+$JOB Jessica First test job 
+$C MyCProgram
+#include <stdio.h>
+int main(){
+    printf("2nd Try- Hello World \n");
+}
+$RUN
+$END

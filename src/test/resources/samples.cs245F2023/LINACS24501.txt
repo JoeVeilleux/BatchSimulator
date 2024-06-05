@@ -1,0 +1,10 @@
+$JOB Lina's First C program to be run under the BatchSimulator
+$C Hello
+#include <stdio.h>
+int main() {
+    printf("Hello, world!\n");
+}
+$RUN
+$END
+
+

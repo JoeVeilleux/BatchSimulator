@@ -1,0 +1,7 @@
+$JOB User Greeting
+$PY Angiehellop
+greet=input("Enter your name:")
+print("Hello, "+greet)
+$RUN 
+greet
+$END

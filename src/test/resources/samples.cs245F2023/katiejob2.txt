@@ -1,0 +1,8 @@
+$JOB Katie's 1st job
+$C KatieCProgram
+#include <stdio.h>
+int main() {
+    printf(“Trying out batch computing again.\n”);
+}
+$RUN
+$END

@@ -1,0 +1,5 @@
+$JOB Naomi A's Batch Computing Test 1
+$PY NAdamskyTestFile2
+print("It is nice out today.")
+$RUN
+$END

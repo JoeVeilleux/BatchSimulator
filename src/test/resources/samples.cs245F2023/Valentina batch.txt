@@ -1,0 +1,12 @@
+﻿
+$JOB
+$C Candy
+#include <stdio.h>
+int main() {
+    printf(“I love peach rings! !\n”);
+}
+$RUN 
+$END
+
+
+

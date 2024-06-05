@@ -1,0 +1,5 @@
+$JOB Michelle First Test Job to be run under the BatchSimulator
+$PY Hello 
+print ("Hello, I hope this works!");
+$RUN 
+$END 

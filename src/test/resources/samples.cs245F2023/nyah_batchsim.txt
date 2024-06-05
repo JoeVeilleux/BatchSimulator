@@ -1,0 +1,5 @@
+$JOB Nyah's first test job for the batch simulator
+$PY shoes
+print("I like shoes")
+$RUN
+$END

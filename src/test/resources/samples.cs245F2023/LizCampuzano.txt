@@ -1,0 +1,7 @@
+$JOB Liz's Test Job
+$C Weather
+int main() {
+    printf("Hello, the weather is nice today! A little windy though.\n");
+}
+$RUN
+$END

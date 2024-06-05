@@ -1,0 +1,8 @@
+$JOB Aislinn's first test job to be run under the BatchSimulator
+$C MyCProgram
+#include <stdio.h>
+int main() {
+    printf(“Have a good weekend!\n”);
+}
+$RUN
+$END

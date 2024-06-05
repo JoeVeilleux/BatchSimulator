@@ -1,0 +1,5 @@
+$JOB My 1st Text Job for BatchSimulator
+$PY MyPythonProgram
+print("Hello, world!");
+$RUN
+$END

@@ -1,0 +1,8 @@
+﻿$JOB Dellina’s Test
+$ MyCProgram
+#include <stdio.h>
+int main() {
+        print(“Hello, My name is Dellina!\n”);
+}
+$RUN
+$END

@@ -1,0 +1,5 @@
+$JOB Amara's First Test Job 
+$PY Hello
+print("Hello world!, I hope this works lol")
+$RUN 
+$END

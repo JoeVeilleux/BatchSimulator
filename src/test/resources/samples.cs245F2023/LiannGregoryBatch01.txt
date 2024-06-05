@@ -1,0 +1,43 @@
+$JOB Liann's first test job
+$C FizzBuzz
+#include <stdio.h>
+
+// declare function
+char* fizzBuzzFunction(int);
+void fizzBuzzProcedure(int, char*);
+
+int main() {
+    // loop from 1-100
+    for (int i = 1; i<=100; i++) {
+        char *s;
+        s = fizzBuzzFunction(i);
+        fizzBuzzProcedure(i, s);
+    }
+    return 0;
+}
+
+// good ol' fizzBuzz!
+char* fizzBuzzFunction(int i) {
+        if (i%5==0 && i%3==0) {
+                return "fizzBuzz";
+        } else if (i%5==0) {
+                return "buzz";
+        } else if (i%3==0) {
+                return "fizz";
+        }
+        return "";
+}
+
+// Procedure that doesn't return anything
+void fizzBuzzProcedure(int i, char* s) {
+        printf("%i: %s\n", i, s);
+}
+
+
+int add(int number1, int number2) {
+        int total = number1 + number2;
+        return total;
+}
+$RUN
+$END
+

@@ -1,0 +1,7 @@
+$JOB Elise's First C program to be run under the BatchSimulator
+$C Hello
+int main() {
+    printf("Hello, This is my practice batch programming!\n");
+}
+$RUN
+$END

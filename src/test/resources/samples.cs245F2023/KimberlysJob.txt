@@ -1,0 +1,8 @@
+$JOB Kimberly's first job
+$C KimberlyJob
+#include <stdio.h>
+int main() {
+    printf("hungered!\n");
+}
+$RUN
+$END

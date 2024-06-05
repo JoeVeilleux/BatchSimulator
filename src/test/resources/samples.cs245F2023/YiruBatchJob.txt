@@ -1,0 +1,5 @@
+$JOB Yiru's First Python program to be run under the BatchSimulator
+$PYTHON Hello
+print("Hello, world!");
+$RUN
+$END

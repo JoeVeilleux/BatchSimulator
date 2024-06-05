@@ -1,0 +1,9 @@
+$JOB Megan’s First test job
+$C MacBatch
+#include <stdio.h>
+int main() {
+	printf(“Hello world!/n”);
+	printf(“I should know what a pointer is but I don’t/n”);
+}
+$RUN
+$END
