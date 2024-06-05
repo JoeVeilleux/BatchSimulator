@@ -44,7 +44,7 @@ public class BatchSimulator {
 	enum RunMode { SingleThreadAllFiles, SingleThreadWaitForStop }
 	
 	private enum PARSETOKEN {
-		JOB("^\\$JOB (.*)"), COMPILE("^\\$(PY|JAVA|C) (\\w+).*"), CODEORRUN("^\\$RUN.*"), INPUTDATAOREND("^\\$END.*"), ERROREXIT("^\\s+$");
+		JOB("^\\$JOB (.*)"), COMPILE("^\\$(PY|JAVA|C) (\\w+).*"), CODEORRUN("^\\$RUN.*"), INPUTDATAOREND("^\\$END.*"), ERROREXIT("^\\s*$");
 		private Pattern pat = null;
 		PARSETOKEN(String sPat) { 
 			this.pat = Pattern.compile(sPat);
