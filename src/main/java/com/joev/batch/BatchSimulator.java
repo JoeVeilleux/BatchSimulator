@@ -30,7 +30,8 @@ public class BatchSimulator {
 	private static Properties props = null;
 	private static int iJobNumber = 1;
 	
-	private static final boolean bVerbose = true; // FIXME: false;
+	// FIXME: Set this from a property
+	private static final boolean bVerbose = false; // FIXME: false;
 
 	private static final HashMap<String,File> alfSpoolDir = new HashMap<String,File>();
 	private static final SimpleDateFormat sdfLastMod = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -44,7 +45,12 @@ public class BatchSimulator {
 	enum RunMode { SingleThreadAllFiles, SingleThreadWaitForStop }
 	
 	private enum PARSETOKEN {
-		JOB("^\\$JOB (.*)"), COMPILE("^\\$(PY|JAVA|C) (\\w+).*"), CODEORRUN("^\\$RUN.*"), INPUTDATAOREND("^\\$END.*"), ERROREXIT("^\\s*$");
+		JOB("^.*\\$JOB (.*)"), // NOTE: May be prefixed with UTF-8 BOM 0xefbbbf (Windows/Notepad)
+		COMPILE("^\\$(PY|JAVA|C) (\\w+).*"), 
+		CODEORRUN("^\\$RUN.*"), 
+		INPUTDATAOREND("^\\$END.*"), 
+		ERROREXIT("^\\s*$")
+		;
 		private Pattern pat = null;
 		PARSETOKEN(String sPat) { 
 			this.pat = Pattern.compile(sPat);
