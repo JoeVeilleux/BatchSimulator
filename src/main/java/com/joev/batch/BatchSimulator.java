@@ -28,10 +28,10 @@ public class BatchSimulator {
 	private static final String sNL = System.getProperty("line.separator");
 	private static final String sPropFileName = "BatchSimulator.properties";
 	private static Properties props = null;
-	private static int iJobNumber = 1;
+	private static int iJobNumber = 0;
 	
-	// FIXME: Set this from a property
-	private static final boolean bVerbose = false; // FIXME: false;
+	// Generate verbose debug output during parse; can be set from ParseDebug in the properties file
+	private static boolean bParseDebug = false;
 
 	private static final HashMap<String,File> alfSpoolDir = new HashMap<String,File>();
 	private static final SimpleDateFormat sdfLastMod = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -78,8 +78,8 @@ public class BatchSimulator {
 		//   ...input data for the program...
 		// $END
 		BufferedReader brInputJobs = null;
-		log.log("Reading input from file '"+fInput.getAbsolutePath()+"'...");
-		// FIXME: This method of reading only supports files in the default encoding, which appears to be ASCII (not UTF-8, etc)
+		if (bParseDebug) log.log("Reading input from file '"+fInput.getAbsolutePath()+"'...");
+		// FIXME: This method of reading only supports files in the default encoding, which appears to vary by platform
 		brInputJobs = new BufferedReader(new FileReader(fInput));
 		PARSETOKEN ptExpect = PARSETOKEN.JOB;
 		StringBuffer sbJob = new StringBuffer();
@@ -99,14 +99,14 @@ public class BatchSimulator {
 			if (sbJob.length() > 0)
 				sbJob.append(sNL);
 			sbJob.append(sLine);
-			if (bVerbose) log.log("PARSER: Read input line #"+iLine+": "+sLine);
+			if (bParseDebug) log.log("PARSER: Read input line #"+iLine+": "+sLine);
 			// Parse this input line, using the current parse context...
 			Matcher m = ptExpect.matcher(sLine);
 			switch (ptExpect) {
 			case JOB:
 				if (m.matches()) {
 					sJobComments = m.group(1);
-					if (bVerbose) log.log("PARSER: Recognized '$JOB'. Comments='"+sJobComments+"'");
+					if (bParseDebug) log.log("PARSER: Recognized '$JOB'. Comments='"+sJobComments+"'");
 					ptExpect = PARSETOKEN.COMPILE;
 				} else {
 					sParseError = "ERROR: Input line #"+iLine+" '"+sLine+"' does not match expected pattern '"+ptExpect.pat.pattern()+"'";
@@ -118,7 +118,7 @@ public class BatchSimulator {
 				if (m.matches()) {
 					sCompilerLang = m.group(1);
 					sPgmName = m.group(2);
-					if (bVerbose) log.log("PARSER: Recognized '$"+sCompilerLang+"'. PgmName='"+sPgmName+"'");
+					if (bParseDebug) log.log("PARSER: Recognized '$"+sCompilerLang+"'. PgmName='"+sPgmName+"'");
 					ptExpect = PARSETOKEN.CODEORRUN;
 				} else {
 					sParseError = "ERROR: Input line #"+iLine+" '"+sLine+"' does not match expected pattern '"+ptExpect.pat.pattern()+"'";
@@ -128,7 +128,7 @@ public class BatchSimulator {
 				break;
 			case CODEORRUN:
 				if (m.matches()) {
-					if (bVerbose) log.log("PARSER: Recognized '$RUN'.");
+					if (bParseDebug) log.log("PARSER: Recognized '$RUN'.");
 					ptExpect = PARSETOKEN.INPUTDATAOREND;
 				} else {
 					// It must be a (another?) line of program code...
@@ -139,7 +139,7 @@ public class BatchSimulator {
 				break;
 			case INPUTDATAOREND:
 				if (m.matches()) {
-					if (bVerbose) log.log("PARSER: Recognized '$END'.");
+					if (bParseDebug) log.log("PARSER: Recognized '$END'.");
 					ptExpect = PARSETOKEN.ERROREXIT;
 				} else {
 					// It must be a (another?) line of input data...
@@ -167,8 +167,7 @@ public class BatchSimulator {
 		}
 		brInputJobs.close();
 		
-		log.log("At end of input loop:");
-		log.log("Number of lines read: "+iLine);
+		if (bParseDebug) log.log("At end of input loop; number of lines read: "+iLine);
 
 		return new BatchJob(fInput.getName(), sParseError, iJobNumber, sbJob.toString(), sJobComments, sCompilerLang, sPgmName, sbPgmCode.toString(), sbInputData.toString());
 	}
@@ -417,6 +416,8 @@ public class BatchSimulator {
 
 		// Get global runtime properties...
 		loadProps();
+		bParseDebug = new Boolean(props.getProperty("ParseDebug", "false"));
+		if (bParseDebug) log.log("ParseDebug=" + bParseDebug);
 		RunMode runMode = RunMode.valueOf(props.getProperty("RunMode"));
 		log.log("RunMode: "+runMode);
 		
