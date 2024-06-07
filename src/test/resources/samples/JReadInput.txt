@@ -1,14 +1,5 @@
 $JOB Joe's test job to be run under the BatchSimulator: read input from stdin
 $JAVA Foo
-public class Foo {
-    public static void main(String[] args) {
-        System.out.println("Hello, world!");
-    }
-}
-$RUN
-$END
-$JOB Joe's Second test job to be run under the BatchSimulator
-$JAVA Foo
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 public class Foo {
