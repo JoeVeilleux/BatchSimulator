@@ -13,9 +13,9 @@ The simulator then processes the job by:
 * Parsing the file to ensure that it compilies with syntax requirements.
 * Copying the program source code and input data (optional) to temporary files
 * Compiling/running the program; details differ by language:
-  * C: Compile the program using gcc, then execute the program feeding in the input file via I/O redirection.
-  * Java: Compile the program to Java bytecode using 'javac', then run the program using 'java', feeding in the input file via I/O redirection.
-  * Python: Run the program using the 'python3' command, feeding in the input file via I/O redirection.
+    * C: Compile the program using gcc, then execute the program feeding in the input file via I/O redirection.
+    * Java: Compile the program to Java bytecode using 'javac', then run the program using 'java', feeding in the input file via I/O redirection.
+    * Python: Run the program using the 'python3' command, feeding in the input file via I/O redirection.
 * Capturing the output of the compile step (C, Java), and the output of execution, and writing them to the listing file.
 
 To run the batch simulator, do the following:
@@ -32,7 +32,14 @@ The batch simulator program continues to run and process additional input files.
 
 ## Job Syntax
 
-TODO
+A job's input file must be in this format:
+* JOB line: `$JOB descriptive`
+* Compile line: `$C`, `$JAVA`, or `$PY`, followed by the program's name
+    - In Java, this *must* be the program's main class name; for C or Python it can be any descriptive name
+* One or more lines of program source code
+* End-of-program, beginning-of-data line: `$RUN`
+* End-of-job line: `$END`
+
 
 ## Sample Input Files
 
