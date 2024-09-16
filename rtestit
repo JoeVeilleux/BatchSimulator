@@ -1,0 +1,3 @@
+#!/bin/sh
+scp src/test/resources/samples/*.txt batch@172.30.103.25:Input
+scp src/test/resources/samples.cs245F2023/*.txt batch@172.30.103.25:Input
